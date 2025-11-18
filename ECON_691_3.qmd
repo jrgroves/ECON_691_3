@@ -2,11 +2,15 @@
 title: "Economics 691: Week Three"
 author: "Jeremy Groves"
 format: 
-  revealjs:     
-   center: TRUE
+  revealjs:
+    code-line-numbers: true
+    width: 1100
+    height: 700
+    fontsize: 20pt
 ---
 
 ## From Last Week
+
 ```{r}
 #| eval: FALSE
 #| echo: TRUE
@@ -68,19 +72,20 @@ core <- census %>%
 
 ```
 
-
 ## What We Have So Far
+- To make the visualization exercises a bit more interesting today, you will need to sync your repository via GitHub again and then load in a new `core` dataframe.
+-This new dataframe contains the sightings for all states for the years 2009, 2010, and 2011 and divides them by the annual population of each state.
 
 ```{r}
 #|echo: TRUE
 #|eval: TRUE
 #|classes: styled-output
-
-
-library(tidyverse)
 library(sf)
+library(tidyverse)
+library(gt)
+library(gtsummary)
 
-load("./core.RData")
+load("./Build/Output/core.RData")
 temp <- core |>
   st_drop_geometry()
   
@@ -88,14 +93,310 @@ head(temp)
 
 ```
 
+## Visualization
 
+- Data visualization is just as important as the downloading and cleaning of data because it allows your reader to quickly get a feel for your data.
+- Visualization also serves as a way for you to ensure that your data is "clean" and there are not potential errors that you have missed that might skew your results
+- Three key ways to visualize
+  - Graphs
+  - Plots (Maps)
+  - Tables
 
+## Visualization: Graphs
 
+- There are several ways to create visualizations in `R`, but we will use the `ggplot2` package that is part of the `tidyverse` package.
+- `ggplot2` is the standard at this point in time for visualization given the extreme customization ability.
+- One of the first visualizations we will look at is the Box-Whisker Plot, or the *boxplot*.
+- `ggplot` is based on a series of *geoms* that allow you to produce a variety of different base graphics.
+- Common geoms include: line, point, boxplot, and sf.
 
-## Code
-
-When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+## GGPLOT Coding
 
 ```{r}
-1 + 1
+#| eval: FALSE
+#| echo: TRUE
+
+ggplot(core) + 
+  geom_boxplot(aes(x = year, y = sightings), color = "navy") +
+  theme_bw()
 ```
+
+1. This line is calling the general `ggplot()` command and is a place where you can set any variables that will be constant throughout the code. In this case, we are setting the dataframe that we will be using.
+2. This line is calling the specific graph we want on THIS LAYER. Next is the `aes()` which is the option for aesthetics or "looks" of the graph. We set our x-axis and y-axis variables and we can also denotes groups if we want here. Notice that outside the `aes()` command we change the color of the graph. This is okay here because we want it for *EVERYTHING* in the plot.
+    - `ggplot` creates layers and the first listed is the top layer. This is important to know when we are overlaying different graphs. You should treat each `geom_` line a separate layer.
+3. Themes are how `ggplot` sets many of the visual elements. In this case we are using a pre-set theme called *bw*, but we can run the code without to see the difference.
+
+## GGPLOT Coding - with `theme_bw()`
+
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+
+ggplot(core) + 
+  geom_boxplot(aes(x = year, y = sightings), color = "navy") +
+  theme_bw()
+```
+
+## GGPLOT Coding - without `theme_bw()`
+
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+
+ggplot(core) + 
+  geom_boxplot(aes(x = year, y = sightings), color = "navy") 
+```
+
+## Visualization: Graphs
+
+- We see that we have a possible outlyier with more than 400 sightings per year. Unfortunately we can not see which case this is on the image, we can quickly use our code to try to find it.
+
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+
+temp <- filter(core, sightings > 200)
+temp
+```
+
+## Visualization: Graphs
+
+- Given that we also expect several of these states to have rather large populations, the higher sightings may not be an issue. As such, we can redo the box plot using the sightings per 100K persons variable.
+- How would you change the code?
+
+```{r}
+#| eval: FALSE
+#| echo: TRUE
+
+ggplot(core) + 
+  geom_boxplot(aes(x = year, y = sightings), color = "navy") +
+  theme_bw()
+```
+
+## Visualization: Graphs
+
+- Given that we also expect several of these states to have rather large populations, the higher sightings may not be an issue. As such, we can redo the box plot using the sightings per 100K persons variable.
+- How would you change the code?
+
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+#| fig-align: center
+
+ggplot(core) + 
+  geom_boxplot(aes(x = year, y = sight_per), color = "navy") +
+  theme_bw()
+```
+
+## Visualization: Graphs
+
+- Next we may want to clean up the text and labels in the graph and we can do that by using the `labs()` command inside the `ggplot` package.
+- Notice, if not already, that we string the code with the `+` rather than the `%>%`. This is because we are not so much pipping code as adding elements and layers.
+
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+#| fig-align: center
+
+ggplot(core) + 
+  geom_boxplot(aes(x = year, y = sight_per), color = "navy") +
+  labs(title = "Box Plot of UFO Sightings per 100,000 Persons in the U.S.",
+       caption = "Data obtained from Kraggle.com and ACS",
+       x = "Year",
+       y = "Sightings per 100K Persons") +
+  theme_bw()
+```
+
+## Visualization: Plots/Maps
+
+- Another way to visualize data is geographically using maps. 
+- In our case we have an `sf` object so this is very easy to do using the `geom_sf()`. 
+- With maps or some plots, we have the option of changing fill values so they connect with a measure of the data. In our case we want to see how the sightings per 100K persons spread across the map and time.
+- In creating several maps overtime, we can either combine individually made graphs or create a facet across some variable in our data.
+- Let's start simple with must a plot for the year 2009.
+```{r}
+#| eval: FALSE
+#| echo: TRUE
+#| fig-align: center
+
+ggplot(filter(core,  year == "2009")) + 
+  geom_sf(aes(fill = sight_per)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS") 
+```
+
+## Visualization: Plots/Maps
+
+```{r}
+#| eval: TRUE
+#| echo: FALSE
+#| fig-align: center
+
+ggplot(filter(core,  year == "2009")) + 
+  geom_sf(aes(fill = sight_per)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS") + 
+  theme_bw()
+```
+
+## Visualization: Plots/Maps
+
+- Some items we would like to clean up:
+    1. [ ] Remove the lat/long on the axis
+    2. [ ] Remove the gray area in the plot space
+    3. [ ] Rename the legend text 
+    4. [ ] Change the color gradient
+- For the first, recall that the visual, non-plot elements are generally modified in the `theme()` command. Type **theme** in your help search of RStudio.
+- You can see there is a great deal of elements that you can alter and change making this a rather powerful, yet complicated, command. 
+- This is another case where getting a "quick" answer is doable simply by searching Google.
+- We also need to know two things about working with themes. First, if we use a pre-built them (such as `theme_bw()`) we need to change other elements in a separate `theme()` command and, secondly, that call must be AFTER we call the pre-built theme.
+
+## Visualization: Plots/Maps
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+#| fig-align: center
+
+ggplot(filter(core,  year == "2009")) + 
+  geom_sf(aes(fill = sight_per)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS") + 
+  theme_bw()+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+## Visualization: Plots/Maps
+
+- Some items we would like to clean up:
+    1. [x] Remove the lat/long on the axis
+    2. [x] Remove the gray area in the plot space
+    3. [o] Rename the legend text 
+    4. [ ] Change the color gradient
+    
+- Renaming the legend is easy once you change the way you think about the problem. 
+- Searching for legend will provide some results but you will notice that they all refer to what command you used in the aesthetics. This is because a legend can show the fill color, an outline color, a line type, a line thickness, or any other number of categories or measures. 
+- As such, that is how we know which legend to name what and we simply add this in the `labs()` command.
+```{r}
+#| eval: FALSE
+#| echo: TRUE
+#| fig-align: center
+
+ggplot(filter(core,  year == "2009")) + 
+  geom_sf(aes(fill = sight_per)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS",
+       fill = "Sigthings per 100K") + 
+  theme_bw()+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+## Visualization: Plots/Maps
+
+- To see this in working, consider the following case where the outline of the state will change based on the median age. 
+- I created a variable that is called age and is equal to 1 if the median age is less than the total average median age for that year. 
+- Notice how we have two legends in the table now.
+```{r}
+#| eval: TRUE
+#| echo: FALSE
+#| fig-align: center
+
+ggplot(filter(core,  year == "2009")) + 
+  geom_sf(aes(fill = sight_per, color = age)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS",
+       fill = "Sigthings per 100K") + 
+  theme_bw()+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+## Visualization: Plots/Maps
+- We can fix that by changing the name of the color legend in the `labs()` command.
+
+```{r}
+#| eval: TRUE
+#| echo: FALSE
+#| fig-align: center
+
+ggplot(filter(core,  year == "2009")) +  
+  geom_sf(aes(fill = sight_per, color = age)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS",
+       fill = "Sigthings per 100K", 
+       color = paste0("Below Age ", median(core$median.age))) + 
+  theme_bw()+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+## Visualization: Plots/Maps
+
+- Some items we would like to clean up:
+    1. [x] Remove the lat/long on the axis
+    2. [x] Remove the gray area in the plot space
+    3. [X] Rename the legend text 
+    4. [o] Change the color gradient
+- Changing the color gradient depends on the type of gradient and if the values are continous or discrete. 
+- This can become one of the more complicated modifications unless you do it several times to get used to it. The code we will use is
+```{r}
+#| eval: FALSE
+#| echo: TRUE
+ggplot(filter(core,  year == "2009")) + 
+  geom_sf(aes(fill = sight_per, color = age)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS",
+       fill = "Sigthings per 100K", 
+       color = paste0("Below Age ", median(core$median.age))) + 
+  scale_fill_continuous(low = "lightblue", high = "darkblue", limits = c(0, 4))+
+  theme_bw()+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank())
+```
+
+## Visualization: Plots/Maps
+- When we show a graph for each group (such as year), it is called a `facet()`
+- The advantage is we make sure to keep our color scale and lables constant across graphs.
+```{r}
+#| eval: TRUE
+#| echo: FALSE
+ggplot(core) + 
+  geom_sf(aes(fill = sight_per, color = age)) +
+  labs(title = "UFO Sightings per 100,000 Persons in the U.S. - 2009",
+       caption = "Data obtained from Kraggle.com and ACS",
+       fill = "Sigthings per 100K", 
+       color = paste0("Below Age ", median(core$median.age))) + 
+  scale_fill_continuous(low = "lightblue", high = "darkblue", limits = c(0, 4))+
+  theme_bw()+
+  theme(axis.ticks = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        legend.position = "bottom") +
+  facet_wrap(~ year)
+```
+
+
+## Visualization: Tables
+- Finally we come to the most common form of visualization, tables. 
+- Tables need to be consistent across versions, clearly labeled, and easy to read. 
+- Required tables in any essay are going to be a table of summary statistics and a table of regression results.
+- Other tables may include a table showing the definition of variable names or other extra information.
+
+## Visualization: Tables
+```{r}
+#| eval: TRUE
+#| echo: FALSE
+
+core |>
+  st_drop_geometry() |>
+  select(year, sight_per) |>
+  tbl_summary()
+
+```
+
