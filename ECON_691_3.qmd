@@ -8,7 +8,17 @@ format:
     height: 700
     fontsize: 20pt
 ---
-
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+library(sf)
+library(tidycensus)
+library(gtsummary)
+library(gt)
+#source("./Build/Code/Example.R")
+```
+    
 ## From Last Week
 
 ```{r}
@@ -79,11 +89,6 @@ core <- census %>%
 ```{r}
 #|echo: TRUE
 #|eval: TRUE
-#|classes: styled-output
-library(sf)
-library(tidyverse)
-library(gt)
-library(gtsummary)
 
 load("./Build/Output/core.RData")
 temp <- core |>
@@ -388,15 +393,390 @@ ggplot(core) +
 - Required tables in any essay are going to be a table of summary statistics and a table of regression results.
 - Other tables may include a table showing the definition of variable names or other extra information.
 
+## Visualization: Tables {.smaller}
+```{r}
+#| eval: FALSE
+#| echo: TRUE
+
+core |>
+  st_drop_geometry() |>  
+  select(year, sight_per) |>   
+  tbl_summary(
+    by = year,
+    type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c("{mean}","{sd}")
+  ) %>%
+  add_stat_label(label = sight_per ~ c("Mean", "Std. Dev")) %>%
+  modify_header(all_stat_cols() ~ "**{level}**",
+                label ~ "")  %>%
+  remove_row_type(sight_per, type = "header") |>
+  as_gt() %>%
+  tab_header(title = md("**Table 2** Summary of Sightings"))
+```
+1. Removes the 'sf' object characteristics
+2. Keeps only the data we want to put in table.
+3. Starts the table creation command
+4. Denotes how we want to group our data.
+5. Defines the type of data
+6. Defines the specific statistics we want to show
+8. Labels the statistics
+9. Modifies the Header Properties (through lines 11)
+12. Saves as a gt object.
+13. Places the table name.
+
+
 ## Visualization: Tables
 ```{r}
 #| eval: TRUE
 #| echo: FALSE
 
-core |>
+T2 <- core |>
   st_drop_geometry() |>
   select(year, sight_per) |>
-  tbl_summary()
+  tbl_summary(
+    by = year,
+    type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c("{mean}","{sd}")
+  ) %>%
+  add_stat_label(label = sight_per ~ c("Mean", "Std. Dev")) %>%
+  modify_header(all_stat_cols() ~ "**{level}**",
+                label ~ "")  %>%
+  remove_row_type(sight_per, type = "header") |>
+  as_gt() %>%
+  tab_header(title = md("**Table 2** Summary of Sightings"))
+
+T2
+```
+
+## Visualization: Tables
+
+- Having a table in RStudio, however, is not much help when we really need to insert it into a paper or essay. 
+- There are two ways we can do this; (1) as an image or (2) as `LaTeX` code. 
+- Additionally, we must assign the table code to an object or add the `gtsave()` command at the end of the pipped code.
+  - To store as an image, the best means is to save it as an html and work from there using copy-and-paste or screenshots.
+    - The code is `gtsave(T2, filename = "./Build/Output/Table2.html)`
+  - To store as a `LaTeX` code, we use the same code, but change the file extension.
+    - The code is `gtsave(T2, filename = "./Build/Output/Table2.tex)`
+
+```{r}
+#| eval: TRUE
+#| echo: FALSE
+
+gtsave(T2, file="./Build/Output/Table2.tex")
+gtsave(T2, file="./Build/Output/Table2.html")
+```
+  
+## Regressions
+ - Finally, we want to be able to run simple linear regressions on for our data. 
+ - We can always run more complicated methods via packages or use `matrix` commands to estimate the actual model "long hand."
+  - No matter the method you use to estimate the regression, it is imperative that you FULLY UNDERSTAND the script you use and how it is working so that you know if you are feeding the right data into the model and how to understand the results coming out of the model. 
+  - You can read the script of any command in `R` a couple of ways:
+    - You can use the `view()` command.
+    - You can also simply type in the command without the parenthesis to see the code.
+  - In your `R` console type `lm`
+  
+## Regressions - Linear Model
+
+- When we view the code below, we see the action takes place in line that call a second command, `lm.fit`
+```{r}
+#| eval: TRUE 
+  
+lm
+```
+
+## Regressions - Linear Model
+
+- Again we notice that this is not the actual estimation of the model, but another shell command that ensure the data and method is legitimate and then we see the command, `.Call`
+- This is a way to call a C-Function from R and here the function called is a C based version of `dqrls` which stands for "QR decomposition for least squares".
+- From here we can dig further, but we at least know how this method is working.
+
+```{r}
+#| eval: TRUE 
+  
+lm.fit
+```
+
+## Regressions - Non-Package Methods
+
+- If we wanted to regression a model using the maximum likelihood approach, we can do that in the script as well. 
+  - We would define our likelihood function (or negative likelihood function)
+  - We would use the command `optimize()`
+
+- If we wanted to do a simple linear regression using matrix math, we could also do that in the script.
+  - Translate our numerical data frame into a matrix using `as.Matrix()`
+  - Perform the required matrix math for linear regressions.
+  
+- No matter how you or the package choose to restimate the model, it is imperative that you do not just download something, plug data in, and run it. You will generally always get an answer, but it may not be the "right" one. 
+
+## Regressions - lm() Function
+
+- We will use the `lm()` function to run our model
+```{r}
+#| echo: TRUE
+#| eval: FALSE
+
+lm(formula, data, subset, weights, na.action,
+   method = "qr", model = TRUE, x = FALSE, y = FALSE, qr = TRUE,
+   singular.ok = TRUE, contrasts = NULL, offset, ...)
+```
+- First we need to decide on the formula. Using our data for this example that includes data from three years we want to do the following:
+  1. Regress the number of sightings per 100K persons on the median age
+  2. include year fixed effects.
+
+- To define this model, we remember what our variables are called and the syntax:
+`sight_per ~ median.age + factor(year) `
+
+- In this function we the `~` separates our dependent from independent variables and we see the use of the command `factor()`. 
+  - This command lets us add "dummy" variables without actually having to create them. The only catch is that the object must be a character object. 
+  
+## Regressions - lm() Function
+
+- Finally, we want to make sure to assign this an object name because the `lm()` command returns a list object.
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+
+mod1 <- lm(sight_per ~ median.age + factor(year), data = core)
+
+summary(mod1)
+
+```
+## Regressions - lm() Function
+
+- We can keep each of the years in the model by removing the constant term.
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+
+mod1 <- lm(sight_per ~ median.age + year, data = core)
+
+summary(mod1)
+
+```
+
+## Regressions - lm() Function
+
+- What if we wanted state fixed effects in the model? What would we change?
+
+```{r}
+#| echo: TRUE
+#| eval: FALSE
+
+mod2 <- lm(sight_per ~ median.age + year - 1, data = core)
+
+summary(mod2)
+
+```
+
+## Regressions - lm() Function
+
+- What if we wanted state fixed effects in the model? What would we change?
+  - We could replace the `factor(year)` with `factor(state)`; however, our output would be rather large.
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+
+mod3 <- lm(sight_per ~ median.age + state - 1, data = core)
+
+summary(mod3)
+
+```
+
+## Regressions - Using the Results
+- The `lm()` function creates a list object with most of the information we need from any linear regression. 
+  - If you click the little blue arrow in the Environment tab in RStudio, we will see a list of names from the list.
+- Use the syntax `mod1$coefficients` in the console
+```{r}
+#| eval: TRUE
+#| echo: TRUE
+
+mod1$coefficients
+```
+- You can do the same thing for the residuals or the fitted values.
+
+## Regressions - Using the Results
+- Finally, we need to get the results out of the program and into our essay so we will again call on the `gtsummary()` command
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+
+tbl_regression(mod1)
+```
+- Let's clean this up a bit:
+  1. [ ] Replace the variable names with better names.
+  2. [ ] Replace the confidence interval column with standard errors.
+  3. [ ] Replace p-values with asterisks
+  
+## Regressions - Using the Results
+- Let's clean this up a bit:
+  1. [X] Replace the variable names with better names.
+  2. [ ] Replace the confidence interval column with standard errors.
+  3. [ ] Replace p-values with asterisks
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+
+tbl_regression(mod1,
+               label = list(
+                 median.age ~ "Median Age",
+                 year ~ "Year Fixed Effects")) 
+  
+```  
+
+## Regressions - Using the Results
+- Let's clean this up a bit:
+  1. [X] Replace the variable names with better names.
+  2. [ ] Replace the confidence interval column with standard errors.
+  3. [ ] Replace p-values with asterisks
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+
+tbl_regression(mod1,
+               label = list(
+                 median.age ~ "Median Age",
+                 year ~ "Year Fixed Effects"),
+               conf.int = FALSE,
+               estimate_fun = ~ style_number(.x, digits = 4)) |>
+  modify_column_unhide(column = std.error) 
+```
+
+## Regressions - Using the Results
+- Let's clean this up a bit:
+  1. [X] Replace the variable names with better names.
+  2. [X] Replace the confidence interval column with standard errors.
+  3. [ ] Replace p-values with asterisks
+
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+#| code-fold: show
+
+tbl_regression(mod1,
+               label = list(
+                 median.age ~ "Median Age",
+                 year ~ "Year Fixed Effects"),
+               conf.int = FALSE,
+               estimate_fun = ~ style_number(.x, digits = 4)) |>
+  modify_column_unhide(column = std.error) |>
+  add_significance_stars() |>
+  modify_header(label = "") |>
+    add_glance_table(include = c(nobs, r.squared),
+                   label = list(nobs ~ "Observations",
+                                r.squared ~ "R-squared"))
+
+```  
+  
+## Regressions - Using the Results
+- Let's clean this up a bit:
+  1. [X] Replace the variable names with better names.
+  2. [X] Replace the confidence interval column with standard errors.
+  3. [X] Replace p-values with asterisks
+
+```{r}
+#| echo: FALSE
+#| eval: TRUE
+
+tbl_regression(mod1,
+               label = list(
+                 median.age ~ "Median Age",
+                 year ~ "Year Fixed Effects"),
+               conf.int = FALSE,
+               estimate_fun = ~ style_number(.x, digits = 4)) |>
+  modify_column_unhide(column = std.error) |>
+  add_significance_stars() |>
+  modify_header(label = "") |>
+    add_glance_table(include = c(nobs, r.squared),
+                   label = list(nobs ~ "Observations",
+                                r.squared ~ "R-squared"))
+
+```  
+
+## Regressions - Using the Results
+- To show multiple models, we again exploit the object-ness of `R` and pipped code. We can approach this in two ways.
+  1. Save our `tbl_regression()` calls to an object itself.
+  2. Pipe the `tbl_regression()` call onto the regression call. This saves the table, not the regression. 
+
+- Once we have the tables saved, we use the `tbl_merge()` command with a list of our tables.
+
+```{r}
+#| echo: TRUE
+#| eval: FALSE
+
+tbl_merge(
+  list(mt1, mt2),
+  tab_spanner = c("**Intercept**", "**No Intercept**")
+)
+```
+
+## Regressions - Using the Results
+
+-Seeing this in action shows us
+
+```{r}
+#| echo: FALSE
+#| eval: TRUE
+
+mt1 <- tbl_regression(mod1,
+               label = list(
+                 median.age ~ "Median Age",
+                 year ~ "Year Fixed Effects"),
+               conf.int = FALSE,
+               estimate_fun = ~ style_number(.x, digits = 4)) |>
+  modify_column_unhide(column = std.error) |>
+  add_significance_stars() |>
+  modify_header(label = "") |>
+    add_glance_table(include = c(nobs, r.squared),
+                   label = list(nobs ~ "Observations",
+                                r.squared ~ "R-squared"))
+
+mod2 <- lm(sight_per ~ median.age + year - 1, data = core)
+
+mt2 <- tbl_regression(mod2,
+               label = list(
+                 median.age ~ "Median Age",
+                 year ~ "Year Fixed Effects"),
+               conf.int = FALSE,
+               estimate_fun = ~ style_number(.x, digits = 4)) |>
+  modify_column_unhide(column = std.error) |>
+  add_significance_stars() |>
+  modify_header(label = "") |>
+    add_glance_table(include = c(nobs, r.squared),
+                   label = list(nobs ~ "Observations",
+                                r.squared ~ "R-squared"))
+
+
+tbl_merge(
+  list(mt1, mt2),
+  tab_spanner = c("**Intercept**", "**No Intercept**")
+)
+```
+
+## Regressions - Using the Results
+
+-So how do we get this out?
+
+## Regressions - Using the Results
+
+- Name the merged object, transform it into a `gt` objects, and save it as the file type we want
+```{r}
+#| echo: TRUE
+#| eval: TRUE
+#| code-fold: show
+
+T3 <- tbl_merge(
+  list(mt1, mt2),
+  tab_spanner = c("**Intercept**", "**No Intercept**")) |>
+    as_gt()
+
+gtsave(T3, file = "Table3.html")
+gtsave(T3, file = "Table3.tex")
 
 ```
 

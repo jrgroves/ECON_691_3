@@ -1,0 +1,16 @@
+\begin{table}
+\caption*{
+{\fontsize{20}{25}\selectfont  \textbf{Table 2} Summary of Sightings\fontsize{12}{15}\selectfont }
+} 
+\fontsize{12.0pt}{14.0pt}\selectfont
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}lccc}
+\toprule
+ & \textbf{2009} & \textbf{2010} & \textbf{2011} \\ 
+\midrule\addlinespace[2.5pt]
+    Mean & 1.36 & 1.27 & 1.61 \\ 
+    Std. Dev & 0.59 & 0.59 & 0.77 \\ 
+    Unknown & 1 & 0 & 0 \\ 
+\bottomrule
+\end{tabular*}
+\end{table}
+
