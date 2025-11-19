@@ -7,6 +7,8 @@ format:
     width: 1100
     height: 700
     fontsize: 20pt
+    footer: "Economics 691 - Fall 2025"
+    background-image: "rect3.png"
 ---
 ```{r}
 #| label: setup
@@ -524,10 +526,9 @@ lm(formula, data, subset, weights, na.action,
   2. include year fixed effects.
 
 - To define this model, we remember what our variables are called and the syntax:
-`sight_per ~ median.age + factor(year) `
+`sight_per ~ median.age + year `
 
-- In this function we the `~` separates our dependent from independent variables and we see the use of the command `factor()`. 
-  - This command lets us add "dummy" variables without actually having to create them. The only catch is that the object must be a character object. 
+- In this function we the `~` separates our dependent from independent variables and we see when one of our variables is a character, the function "creates" the set of dummies for us.  
   
 ## Regressions - lm() Function
 
@@ -537,7 +538,7 @@ lm(formula, data, subset, weights, na.action,
 #| echo: TRUE
 #| eval: TRUE
 
-mod1 <- lm(sight_per ~ median.age + factor(year), data = core)
+mod1 <- lm(sight_per ~ median.age + year, data = core)
 
 summary(mod1)
 
@@ -550,9 +551,9 @@ summary(mod1)
 #| echo: TRUE
 #| eval: TRUE
 
-mod1 <- lm(sight_per ~ median.age + year, data = core)
+mod2 <- lm(sight_per ~ median.age + year - 1, data = core)
 
-summary(mod1)
+summary(mod2)
 
 ```
 
@@ -573,7 +574,7 @@ summary(mod2)
 ## Regressions - lm() Function
 
 - What if we wanted state fixed effects in the model? What would we change?
-  - We could replace the `factor(year)` with `factor(state)`; however, our output would be rather large.
+  - We could replace the **year** with **state**; however, keep in mind our output will be quite long.
 
 ```{r}
 #| echo: TRUE
@@ -598,7 +599,8 @@ mod1$coefficients
 - You can do the same thing for the residuals or the fitted values.
 
 ## Regressions - Using the Results
-- Finally, we need to get the results out of the program and into our essay so we will again call on the `gtsummary()` command
+- Finally, we need to get the results out of the program and into our essay so we will again call on the *gtsummary* package again and use the `tbl_regression()` command
+- This command will generally be able to determine the type of regression you are running and adjust what it shows based on this (i.e., odds ratios, survival, ect.)
 
 ```{r}
 #| echo: TRUE
